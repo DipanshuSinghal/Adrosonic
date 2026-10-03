@@ -10,6 +10,8 @@ from adrosonic_retrieval.retrieval import RetrievalService, CollectionUnavailabl
 from adrosonic_retrieval.store import PassageStore
 from adrosonic_retrieval.schemas import SearchRequest
 from adrosonic_retrieval.indexer import batched
+from adrosonic_retrieval import indexer
+from adrosonic_retrieval import evaluate as evaluation
 from adrosonic_retrieval.config import Settings
 
 class FakeEmbedder:
@@ -18,7 +20,7 @@ class FakeEmbedder:
         return np.array([1, 0, 0], dtype=np.float32)
 
 class FakeModel:
-    def get_sentence_embedding_dimension(self): return 3
+    def get_embedding_dimension(self): return 3
     def encode_query(self, texts, **kwargs): return np.ones((len(texts), 2), dtype=np.float32)
 
 def make_store(tmp_path, count=8):
@@ -77,6 +79,37 @@ def test_ingestion_batches_are_bounded_and_deduplicate_stable_ids():
     assert all(len(batch) <= 2 for batch in batches)
     assert len([row for batch in batches for row in batch]) == 4
 
+def test_indexer_logs_progress_for_batches_after_the_first(monkeypatch, tmp_path, caplog):
+    class FakeEmbedder:
+        dimension = 3
+        model_revision = None
+        precision = "fp32"
+        device = "cpu"
+
+        def __init__(self, *args, **kwargs): pass
+        def encode_documents(self, texts, batch_size):
+            return np.ones((len(texts), self.dimension), dtype=np.float32)
+
+    class FakeStore:
+        def __init__(self, *args, **kwargs): self.indexed = 0
+        def count(self): return self.indexed
+        def upsert(self, rows, vectors): self.indexed += len(rows)
+        def close(self): pass
+
+    rows = [{"passage_id": str(i), "text": f"passage {i}"} for i in range(300)]
+    monkeypatch.setattr(indexer, "Embedder", FakeEmbedder)
+    monkeypatch.setattr(indexer, "PassageStore", FakeStore)
+    monkeypatch.setattr(indexer, "load_passages", lambda *args: iter(rows))
+    settings = Settings(batch_size=128, data_limit=300, output_dir=tmp_path)
+
+    with caplog.at_level("INFO", logger=indexer.__name__):
+        report = indexer.run_index(settings)
+
+    assert report["indexed_this_run"] == 300
+    assert [record.getMessage() for record in caplog.records
+            if record.getMessage().startswith("Indexed ")] == [
+        "Indexed 128 passages", "Indexed 256 passages", "Indexed 300 passages"]
+
 def test_huggingface_api_key_loads_from_dotenv_without_plaintext_repr(tmp_path):
     env_file = tmp_path / "test.env"
     env_file.write_text("HUGGINGFACE_API_KEY=fixture-token-value\n", encoding="utf-8")
@@ -99,7 +132,7 @@ def test_qwen_embedder_uses_instruction_token_and_requested_dimension(monkeypatc
             self.prompts = {"query": "old prompt"}
             self.dimension = kwargs.get("truncate_dim", 1024)
             instances.append(self)
-        def get_sentence_embedding_dimension(self): return self.dimension
+        def get_embedding_dimension(self): return self.dimension
         def modules(self): return []
         def eval(self): return self
         def encode_query(self, texts, **kwargs):
@@ -122,3 +155,40 @@ def test_qwen_embedder_uses_instruction_token_and_requested_dimension(monkeypatc
     assert model.model.prompts["query"] == "Instruct: retrieve answer passages\nQuery:"
     assert np.allclose(model.encode_query("sample")[:2], [1.0, 0.0])
     assert model.encode_documents(["passage"]).shape == (1, 512)
+
+def test_ragas_non_llm_context_precision_imports_when_installed():
+    pytest.importorskip("ragas")
+    from ragas.metrics import NonLLMContextPrecisionWithReference
+
+    assert NonLLMContextPrecisionWithReference is not None
+
+def test_evaluation_filters_references_to_existing_index():
+    rows = [
+        {"query": "first", "reference_contexts": ["Not indexed", "  Indexed\n passage "]},
+        {"query": "second", "reference_contexts": ["Also absent"]},
+        {"query": "third", "reference_contexts": ["indexed passage"]},
+    ]
+
+    selected = evaluation.select_evaluable_rows(rows, {"indexed passage"}, count=10)
+
+    assert [row["query"] for row in selected] == ["first", "third"]
+    assert selected[0]["reference_contexts"] == ["  Indexed\n passage "]
+    assert selected[1]["reference_contexts"] == ["indexed passage"]
+
+def test_evaluation_reference_scan_reads_qdrant_pages_and_stops_when_complete():
+    class FakeClient:
+        def __init__(self):
+            self.calls = 0
+        def scroll(self, **kwargs):
+            self.calls += 1
+            return ([SimpleNamespace(payload={"text": "reference"})], None)
+
+    class FakeStore:
+        collection = "test"
+        client = FakeClient()
+
+    rows = [{"reference_contexts": ["Reference"]}]
+    store = FakeStore()
+
+    assert evaluation.indexed_reference_contexts(store, rows) == {"reference"}
+    assert store.client.calls == 1

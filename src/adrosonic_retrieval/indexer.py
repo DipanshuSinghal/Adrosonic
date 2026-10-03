@@ -43,9 +43,10 @@ def run_index(settings: Settings) -> dict:
     source = load_passages(settings.hf_dataset_id, settings.hf_dataset_config,
                            settings.hf_dataset_split, settings.data_limit, settings.hf_token_value)
     try:
-        for batch in batched(source, settings.batch_size):
+        for batch_number, batch in enumerate(batched(source, settings.batch_size), start=1):
             batch_ready = time.perf_counter()
             dataset_stream_seconds += batch_ready - previous_batch_end
+            log.info("Processing batch %d (%d passages)", batch_number, len(batch))
             try:
                 embedding_start = time.perf_counter()
                 vectors = embedder.encode_documents([row["text"] for row in batch], settings.batch_size)
@@ -56,8 +57,7 @@ def run_index(settings: Settings) -> dict:
                 store.upsert(batch, vectors)
                 upsert_seconds += time.perf_counter() - upsert_start
                 indexed += len(batch)
-                if indexed % (settings.batch_size * 10) == 0 or indexed == len(batch):
-                    log.info("Indexed %d passages", indexed)
+                log.info("Indexed %d passages", indexed)
                 previous_batch_end = time.perf_counter()
             except Exception as batch_error:
                 errors += len(batch)

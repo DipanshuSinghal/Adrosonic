@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     hf_api_key: SecretStr | None = Field(default=None, validation_alias=AliasChoices(
         "HUGGINGFACE_API_KEY", "HF_TOKEN", "HF_API_KEY", "HUGGINGFACEHUB_API_TOKEN"))
     device: str = "cpu"
-    batch_size: int = Field(128, ge=1, le=4096)
+    batch_size: int = Field(32, ge=1, le=4096)
     data_limit: int = Field(100_000, ge=1)
     collection_name: str = "msmarco_qwen3_embedding_0_6b"
     baseline_collection_name: str = "msmarco_passages"

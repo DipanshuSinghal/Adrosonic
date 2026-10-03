@@ -23,7 +23,7 @@ def load_passages(dataset_id: str, config: str, split: str, limit: int,
             break
 
 
-def load_eval_queries(dataset_id: str, config: str, split: str, limit: int,
+def load_eval_queries(dataset_id: str, config: str, split: str, limit: int | None,
                       token: str | None = None) -> list[dict[str, Any]]:
     """Read labeled MS MARCO QA rows and retain selected reference passages."""
     from datasets import load_dataset
@@ -40,6 +40,6 @@ def load_eval_queries(dataset_id: str, config: str, split: str, limit: int,
         if query and references and answer:
             records.append({"query": query, "reference_answer": answer, "reference_contexts": references,
                             "query_id": str(row.get("query_id", ""))})
-            if len(records) >= limit:
+            if limit is not None and len(records) >= limit:
                 break
     return records

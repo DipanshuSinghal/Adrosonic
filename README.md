@@ -63,7 +63,7 @@ python -m adrosonic_retrieval.experiment_runner --list
 python -m adrosonic_retrieval.experiment_runner --experiment qwen-1024-batch64 --run --queries 100
 ```
 
-Install optional evaluation dependencies before the RAGAS command: `python -m pip install -r requirements-eval.txt`. Evaluation uses MS MARCO v1.1 validation rows with human answers and selected passage contexts. RAGAS Context Precision uses its non-LLM reference-context metric. Context Recall is unavailable without an LLM judge or aligned passage-ID qrels, and is recorded as such. For an LLM-based semantic Context Recall, an explicit evaluator integration can be added later; it is not needed for retrieval.
+Install optional evaluation dependencies before the RAGAS command: `python -m pip install -r requirements-eval.txt`. Evaluation uses MS MARCO v1.1 validation rows with human answers and selected passage contexts. It checks which labeled reference passages are already present in the current Qdrant collection, then evaluates only queries with at least one matching indexed reference; the report records this coverage and marks shortfalls as partial. This permits evaluation of an existing partial index without reindexing, but results are filtered to that subset and do not represent full-corpus performance. RAGAS Context Precision uses its non-LLM reference-context metric. Context Recall is unavailable without an LLM judge or aligned passage-ID qrels, and is recorded as such. For an LLM-based semantic Context Recall, an explicit evaluator integration can be added later; it is not needed for retrieval.
 
 The controlled experiment runner reads `experiments/phase1_screening.json`. It uses a separate collection and output folder per experiment, writes raw query latencies plus indexing/benchmark summaries, and creates a timestamped result manifest. Listing is safe and does not download files; `--run` performs model/data downloads and a 10k screening run. The full acceptance run should rerun the selected configuration with `DATA_LIMIT=100000`. No screening results are populated until the experiments are actually run. INT8 quantization was not enabled because no Qwen index or quality baseline is available to measure its effect.
 
@@ -104,7 +104,7 @@ At API startup, one embedding model and one local Qdrant client are initialized 
 - **Missing collection:** run indexing first; `/health` reports `index_missing` and search returns HTTP 503.
 - **Dimension/distance mismatch:** choose a new `COLLECTION_NAME` when changing the encoder. Existing incompatible schemas fail explicitly.
 - **Dataset/model download failure:** check network access and available disk; Hugging Face caches are controlled by the standard HF environment variables.
-- **Slow CPU indexing:** reduce `BATCH_SIZE` if RAM constrained or use an available accelerator. Actual throughput is hardware-specific; inspect `indexing_report.json`.
+- **Slow CPU indexing:** each batch logs when processing starts and when it completes. Reduce `BATCH_SIZE` if a batch takes too long or RAM is constrained, or use an available accelerator. Actual throughput is hardware-specific; inspect `indexing_report.json`.
 - **Embedded Qdrant lock:** close API before ingestion and avoid two processes opening one local database path at once.
 - **RAGAS API or scoring issue:** the exact evaluation exception should be retained in terminal output; the report remains unavailable until a valid run completes.
 

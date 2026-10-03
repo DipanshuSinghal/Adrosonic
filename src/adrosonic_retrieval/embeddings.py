@@ -51,7 +51,7 @@ class Embedder:
         if qwen and query_instruction and isinstance(getattr(self.model, "prompts", None), dict):
             # Qwen's Sentence Transformers card defines a "query" prompt slot.
             self.model.prompts["query"] = f"Instruct: {query_instruction.strip()}\nQuery:"
-        self.dimension = int(self.model.get_sentence_embedding_dimension())
+        self.dimension = int(self.model.get_embedding_dimension())
         if self.dimension <= 0:
             raise ValueError("Embedding model reported an invalid dimension")
         self.model_revision = self._resolved_revision()

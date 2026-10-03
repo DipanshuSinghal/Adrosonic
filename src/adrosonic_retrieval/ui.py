@@ -1,8 +1,7 @@
 """Streamlit demonstration client."""
 import streamlit as st
 import requests
-from .config import get_settings
-
+from adrosonic_retrieval.config import get_settings
 settings = get_settings()
 st.set_page_config(page_title="Adrosonic Dense Search", page_icon="🔎", layout="wide")
 st.title("MS MARCO Dense Passage Search")

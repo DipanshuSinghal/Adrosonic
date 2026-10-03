@@ -1,0 +1,3 @@
+# Optional RAGAS evaluation dependencies; install after requirements.txt.
+ragas==0.3.8
+rapidfuzz==3.12.1

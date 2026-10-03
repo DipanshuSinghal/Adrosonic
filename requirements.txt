@@ -1,0 +1,18 @@
+# Python 3.11 supported; pinned direct dependencies for a reproducible Phase 1 baseline.
+sentence-transformers==5.5.0
+transformers==4.51.3
+torch==2.6.0
+qdrant-client==1.13.3
+grpcio==1.70.0
+grpcio-tools==1.70.0
+datasets==4.0.0
+fastapi==0.115.8
+uvicorn[standard]==0.34.0
+streamlit==1.42.2
+pydantic-settings==2.7.1
+python-dotenv==1.0.1
+numpy==2.2.3
+pytest==8.3.4
+pytest-asyncio==0.25.3
+httpx==0.28.1
+requests==2.32.3

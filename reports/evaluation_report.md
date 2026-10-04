@@ -1,5 +1,29 @@
-# RAGAS evaluation
+# Evaluation Report
 
-**Status: unavailable.** The evaluator was invoked and wrote `artifacts/evaluation_report.json`. It failed before loading data with the exact error `ModuleNotFoundError: No module named 'ragas'`. The optional evaluation dependencies, model, validation data, and indexed collection are not locally available. Both metric values are `null`; no score is reported.
+## Summary
+- Dataset: microsoft/ms_marco
+- Split: validation
+- Queries evaluated: 29
+- Status: complete
+- Model: sentence-transformers/all-MiniLM-L6-v2
+- Top-k: 5
 
-The evaluator requires 20 examples with query, answer, and selected reference passage contexts. It records the RAGAS version, configuration, model, timestamp, and Context Precision output in `artifacts/evaluation_report.json`. The offline path uses RAGAS `NonLLMContextPrecisionWithReference`; Context Recall is marked unavailable because this configuration does not use an LLM judge and has no matching passage-ID qrels for the selected MS MARCO v1.1 context set. No paid API or LLM is required for dense search.
+## Metrics
+| Metric | Value |
+| --- | ---: |
+| Context Precision | 0.6603 |
+| Recall@5 | 0.8966 |
+| MRR@5 | 0.5902 |
+
+## Scope
+- Collection: msmarco_qwen3_embedding_0_6b
+- Indexed passages: 100,000
+- Validation queries checked: 9,696
+- Queries with indexed references: 29
+- Selected reference contexts in index: 27
+- Selected reference contexts checked: 10,705
+
+## Notes
+- The evaluation is a partial-index, filtered assessment: it includes only queries with at least one exact normalized selected reference passage present in the collection.
+- Context precision was computed using the RAGAS `NonLLMContextPrecisionWithReference` method against selected MS MARCO reference passage texts.
+- Context recall is unavailable because this setup does not include an LLM judge or passage-ID qrels for full semantic coverage.

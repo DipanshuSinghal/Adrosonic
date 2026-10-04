@@ -1,5 +1,31 @@
-# Latency benchmark
+# Benchmark Report
 
-**Status: not run.** The configured embedding model and Hugging Face Datasets package are absent, and there is no indexed collection. No p50/p95/p99 values are fabricated. The full ML dependency installation stalled while unpacking PyTorch and was stopped after core fixture tests were installed.
+## Summary
+- Date (UTC): 2026-10-03T09:52:44.711718Z
+- Queries: 100
+- Run type: warm
+- Target: p95 < 300 ms
+- Result: not met
 
-Run `python -m adrosonic_retrieval.benchmark --queries 100` after indexing. The tool records every query to `artifacts/latency_log.csv` and summary statistics to `artifacts/benchmark_report.json`. Timed latency is an in-process service call including query embedding, Qdrant search, and Python result conversion; it excludes HTTP transport/JSON serialization. Model initialization and first-time model loading occur before timing. The benchmark labels its run warm; cold-start latency is not measured. Separate embedding and Qdrant measurements are included for profiling. p95 below 300 ms remains unverified.
+## Latency (ms)
+| Metric | Value |
+| --- | ---: |
+| p50 | 219.99 |
+| p95 | 305.64 |
+| p99 | 516.80 |
+| Mean | 235.31 |
+| Min | 199.43 |
+| Max | 572.08 |
+
+## Configuration
+- Model: sentence-transformers/all-MiniLM-L6-v2
+- Embedding dimension: 384
+- Precision: fp32
+- Batch size: 32
+- Top-k: 5
+- Hardware: Windows-11-10.0.26200-SP0, CPU
+
+## Notes
+- Benchmark measures in-process service latency: query encoding + Qdrant search + Python result conversion.
+- HTTP transport and JSON serialization are excluded.
+- Model initialization occurs before the timed section.
